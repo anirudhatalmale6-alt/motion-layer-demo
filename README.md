@@ -128,7 +128,7 @@ All figures below were measured, not estimated — see `VERIFICATION.md`.
 
 | | |
 |---|---|
-| Total payload | 130 KB across 8 requests |
+| Total payload | **83 KB** over the wire across 8 requests (130 KB uncompressed) |
 | Third-party requests | 0 |
 | Frame time, idle | 16.7 ms median (60fps), 0 frames over 33 ms |
 | Frame time, scrolling | 16.7 ms median, 56 fps mean, 13 dropped frames in 209 |

@@ -5,7 +5,7 @@ Playwright, on a headless Linux box with **no GPU — software rasterisation**.
 That matters: it is a pessimistic environment. A real laptop or phone with GPU
 compositing will do better, not worse.
 
-## Payload — 130 KB / 8 requests / 0 third-party
+## Payload — 83 KB / 8 requests / 0 third-party
 
 Read from the page itself, at runtime, via the Resource Timing API
 (`performance.getEntriesByType('resource')` plus the navigation entry's
@@ -14,6 +14,11 @@ than a number typed into the HTML — if a file is added, the number moves.
 
 The third-party count is the number of resource entries whose URL does not start
 with `location.origin`. It is 0. No CDN, no font service, no analytics.
+
+Two figures, both real: **130 KB** served raw from a local `http.server`, **83 KB**
+served from GitHub Pages, which gzips the HTML, CSS and JS. The 83 KB is what a
+visitor actually downloads from any host with compression on; 60 KB of it is the
+three font files, which are already woff2 and do not compress further.
 
 ## Frame timing
 
