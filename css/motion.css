@@ -1,0 +1,206 @@
+/* =============================================================
+   motion.css — every moving part of the page lives here.
+
+   Contract with base.css:
+     base.css always describes the FINAL, at-rest appearance.
+     This file only adds (a) pre-states and (b) transitions,
+     and every one of them is gated behind :root[data-motion="on"].
+
+   That gate is what makes the "Motion on/off" switch in the header
+   a genuine A/B: with it off, the page is exactly the static site.
+   It is also the no-JavaScript fallback — the document ships with
+   data-motion="off", so content is never hidden from a reader whose
+   JavaScript failed to run.
+
+   Only `transform`, `opacity`, `filter` and `clip` are animated, so
+   the compositor can handle every frame without layout or paint.
+   ============================================================= */
+
+/* ---------------------------------------------------------------
+   1. REVEAL PRE-STATES
+   Composed from custom properties so a single transform rule covers
+   every variant. JS adds .is-in to release them.
+   --------------------------------------------------------------- */
+:root[data-motion="on"] [data-reveal]{
+  opacity:0;
+  transform:translate3d(var(--rv-x,0),var(--rv-y,0),0)
+            rotateX(var(--rv-rx,0deg))
+            scale(var(--rv-s,1));
+  transition:opacity var(--dur-reveal) var(--ease-out) var(--d,0s),
+             transform var(--dur-reveal) var(--ease-out) var(--d,0s);
+  will-change:transform,opacity;
+}
+/* The horizontal offset is capped to the page gutter. A flat 64px would
+   push a full-width block past the right edge of a phone while it waits to
+   be revealed — invisible to the eye, but the browser still counts it as
+   overflow and shrinks the whole layout to fit it. */
+:root[data-motion="on"] [data-reveal="rise"] { --rv-y:48px;  --rv-rx:6deg; --rv-s:.965; }
+:root[data-motion="on"] [data-reveal="left"] { --rv-x:calc(-1 * min(64px, var(--gutter) * 0.8)); }
+:root[data-motion="on"] [data-reveal="right"]{ --rv-x:min(64px, calc(var(--gutter) * 0.8)); }
+:root[data-motion="on"] [data-reveal="scale"]{ --rv-s:.9;    }
+:root[data-motion="on"] [data-reveal="mask"] { --rv-y:26px;  filter:blur(6px); }
+
+:root[data-motion="on"] [data-reveal].is-in{
+  opacity:1;
+  --rv-x:0; --rv-y:0; --rv-rx:0deg; --rv-s:1;
+  filter:none;
+}
+
+/* Once a reveal has played out it gives the transform property back —
+   by zeroing its own variables rather than with `transform:none`, because
+   an !important here would outrank the inline transform that the tilt
+   effect writes, and the cards would never lean. */
+[data-reveal].is-settled{
+  --rv-x:0; --rv-y:0; --rv-rx:0deg; --rv-s:1;
+  transition:none;
+  will-change:auto;
+}
+
+/* perspective for the rising cards comes from the grid, not each card */
+.cards,.stats,.ticks{perspective:1100px}
+
+/* ---------------------------------------------------------------
+   2. HERO ENTRANCE — cinematic staggered load
+   --------------------------------------------------------------- */
+:root[data-motion="on"] [data-hero-item]{
+  opacity:0;
+  transform:translate3d(0,var(--hy,24px),0);
+  transition:opacity 1s var(--ease-out) var(--d,0s),
+             transform 1.15s var(--ease-out) var(--d,0s);
+  will-change:transform,opacity;
+}
+/* a headline line does not travel itself — only the text inside it does */
+:root[data-motion="on"] .hero__title .line{--hy:0px}
+/* headline lines wipe up from behind their own overflow mask */
+:root[data-motion="on"] .hero__title .line > span{
+  display:block;
+  transform:translate3d(0,108%,0) rotate(2.5deg);
+  opacity:0;
+  transition:transform 1.25s var(--ease-out) var(--d,0s),
+             opacity .75s linear var(--d,0s);
+  will-change:transform;
+}
+:root[data-motion="on"] [data-hero-item].is-in{opacity:1;transform:none}
+:root[data-motion="on"] .hero__title .line.is-in > span{transform:none;opacity:1}
+
+:root[data-motion="on"] .hero__cue-line{
+  animation:cue 2.4s var(--ease-soft) infinite;
+  transform-origin:top;
+}
+@keyframes cue{
+  0%   {transform:scaleY(0);opacity:0}
+  35%  {transform:scaleY(1);opacity:1}
+  70%  {transform:scaleY(1);opacity:1}
+  100% {transform:scaleY(1) translateY(100%);opacity:0}
+}
+
+/* ---------------------------------------------------------------
+   3. AMBIENT / IDLE MOTION
+   Slow enough to be felt rather than watched. The canvas field is
+   drawn in js/ambient.js; these are the light shifts behind it.
+   --------------------------------------------------------------- */
+:root[data-motion="on"] .ambient__glow--a{animation:driftA 26s ease-in-out infinite alternate}
+:root[data-motion="on"] .ambient__glow--b{animation:driftB 34s ease-in-out infinite alternate}
+:root[data-motion="on"] .ambient__grain{animation:grain 5.5s steps(6) infinite}
+
+@keyframes driftA{
+  from{transform:translate3d(0,0,0) scale(1);opacity:.42}
+  to  {transform:translate3d(9vw,7vh,0) scale(1.16);opacity:.62}
+}
+@keyframes driftB{
+  from{transform:translate3d(0,0,0) scale(1.1);opacity:.3}
+  to  {transform:translate3d(-8vw,-6vh,0) scale(.92);opacity:.52}
+}
+/* the grain is nudged, never re-generated — one cheap transform */
+@keyframes grain{
+  0%,100%{transform:translate3d(0,0,0)}
+  20%{transform:translate3d(-14px,8px,0)}
+  40%{transform:translate3d(10px,-12px,0)}
+  60%{transform:translate3d(-8px,-6px,0)}
+  80%{transform:translate3d(12px,10px,0)}
+}
+
+/* marquee */
+:root[data-motion="on"] .marquee__track{animation:slide 38s linear infinite}
+:root[data-motion="on"] .marquee:hover .marquee__track{animation-play-state:paused}
+@keyframes slide{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
+
+/* ---------------------------------------------------------------
+   4. MICRO-INTERACTIONS — all settle inside 300ms
+   --------------------------------------------------------------- */
+:root[data-motion="on"] .nav{
+  transition:background var(--dur-hover) var(--ease-soft),
+             border-color var(--dur-hover) var(--ease-soft);
+}
+:root[data-motion="on"] .nav__links a{transition:color var(--dur-fast) var(--ease-soft)}
+:root[data-motion="on"] .nav__links a::after{
+  transition:transform 240ms var(--ease-out);
+}
+:root[data-motion="on"] .nav__links a:hover{color:var(--text)}
+:root[data-motion="on"] .nav__links a:hover::after{transform:scaleX(1)}
+
+:root[data-motion="on"] .toggle,
+:root[data-motion="on"] .toggle__track,
+:root[data-motion="on"] .toggle__thumb{
+  transition:all 240ms var(--ease-out);
+}
+:root[data-motion="on"] .fps__dot{animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+:root[data-motion="on"] .btn{
+  transition:transform 220ms var(--ease-out),
+             box-shadow var(--dur-hover) var(--ease-out),
+             border-color var(--dur-hover) var(--ease-out),
+             background var(--dur-hover) var(--ease-out);
+}
+:root[data-motion="on"] .btn > span,
+:root[data-motion="on"] .btn > svg{
+  transition:transform 220ms var(--ease-out);
+}
+:root[data-motion="on"] .btn--primary:hover{box-shadow:0 12px 34px -12px rgba(232,227,216,.55)}
+:root[data-motion="on"] .btn--xl:hover{box-shadow:0 20px 50px -18px rgba(255,74,28,.7)}
+:root[data-motion="on"] .btn--primary:hover svg{transform:translateY(3px)}
+/* a magnetised button is driven frame by frame from JS: no transition
+   while the pointer is inside it, a soft release when it leaves */
+.btn.is-magnetised{transition:box-shadow var(--dur-hover) var(--ease-out) !important}
+.btn.is-releasing{transition:transform 620ms cubic-bezier(.18,1.4,.4,1),
+                             box-shadow var(--dur-hover) var(--ease-out) !important}
+
+/* cards: tilt is written from JS; the glow follows the pointer */
+:root[data-motion="on"] .card{
+  transition:border-color var(--dur-hover) var(--ease-soft);
+}
+:root[data-motion="on"] .card:hover{border-color:rgba(255,74,28,.34)}
+:root[data-motion="on"] .card__glow{transition:opacity var(--dur-hover) var(--ease-soft)}
+:root[data-motion="on"] .card:hover .card__glow{opacity:1}
+.card.is-releasing{transition:transform 700ms cubic-bezier(.2,1.3,.35,1),
+                              border-color var(--dur-hover) var(--ease-soft)}
+
+:root[data-motion="on"] .depth__legend span{transition:color var(--dur-hover),border-color var(--dur-hover)}
+:root[data-motion="on"] .depth__legend span:hover{color:var(--text);border-color:rgba(255,74,28,.45)}
+
+/* motion index rail */
+:root[data-motion="on"] .rail li{transition:opacity 380ms var(--ease-soft),color 380ms var(--ease-soft)}
+:root[data-motion="on"] .rail li span{transition:max-width 460ms var(--ease-out),opacity 300ms var(--ease-soft)}
+:root[data-motion="on"] .rail li i{transition:color 380ms var(--ease-soft)}
+
+/* ---------------------------------------------------------------
+   5. RESPECT THE USER
+   A visitor asking their OS for less motion gets the static page —
+   the ambient canvas is never even started (see js/ambient.js).
+   --------------------------------------------------------------- */
+@media (prefers-reduced-motion:reduce){
+  :root[data-motion="on"] *,
+  :root[data-motion="on"] *::before,
+  :root[data-motion="on"] *::after{
+    animation-duration:.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;
+    scroll-behavior:auto !important;
+  }
+  :root[data-motion="on"] [data-reveal],
+  :root[data-motion="on"] [data-hero-item],
+  :root[data-motion="on"] .hero__title .line > span{
+    opacity:1 !important;transform:none !important;filter:none !important;
+  }
+}

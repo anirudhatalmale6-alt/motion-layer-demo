@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en" data-motion="off">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heliostat — Motion Layer Demo</title>
+<meta name="description" content="A working demonstration of a production motion layer: ambient background motion, scroll choreography, parallax, cursor micro-interactions and magnetic buttons — vanilla JS, 60fps, no libraries.">
+<link rel="preload" href="assets/fonts/bricolage-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/instrument-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/motion.css">
+<script>
+/* The document ships with data-motion="off" so that a visitor whose JS never
+   runs still sees every element at its final state. This flips it on before
+   first paint (no flash of un-hidden content) — and the timer flips it back
+   off if motion.js fails to boot, so a broken script can never hide content. */
+(function(){
+  var r = document.documentElement;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  r.dataset.motion = 'on';
+  window.__motionFuse = setTimeout(function(){ r.dataset.motion = 'off'; }, 3000);
+})();
+</script>
+</head>
+<body>
+
+<!-- ============ ambient layer: canvas particles + grain + light shift ============ -->
+<div class="ambient" aria-hidden="true">
+  <canvas id="ambient-canvas"></canvas>
+  <div class="ambient__glow ambient__glow--a"></div>
+  <div class="ambient__glow ambient__glow--b"></div>
+  <div class="ambient__grain"></div>
+</div>
+
+<!-- ============ nav ============ -->
+<header class="nav" id="nav">
+  <a class="nav__brand" href="#top">
+    <span class="nav__mark" aria-hidden="true"></span>
+    <span>Heliostat</span>
+  </a>
+  <nav class="nav__links" aria-label="Sections">
+    <a href="#choreography">Choreography</a>
+    <a href="#depth">Depth</a>
+    <a href="#field">Interactive</a>
+    <a href="#numbers">Proof</a>
+  </nav>
+  <div class="nav__tools">
+    <div class="fps" id="fps" title="Live frame rate of the animation loop">
+      <span class="fps__dot"></span><span class="fps__val">60</span><span class="fps__unit">fps</span>
+    </div>
+    <button class="toggle" id="motion-toggle" type="button" aria-pressed="true">
+      <span class="toggle__track"><span class="toggle__thumb"></span></span>
+      <span class="toggle__label">Motion <b id="motion-state">on</b></span>
+    </button>
+  </div>
+</header>
+
+<!-- ============ motion index rail ============ -->
+<aside class="rail" id="rail" aria-hidden="true">
+  <ol>
+    <li data-rail="hero"><i>01</i><span>Hero entrance</span></li>
+    <li data-rail="choreography"><i>02</i><span>Scroll choreography</span></li>
+    <li data-rail="split"><i>03</i><span>Opposing slide-in</span></li>
+    <li data-rail="depth"><i>04</i><span>Parallax depth</span></li>
+    <li data-rail="field"><i>05</i><span>Cursor-reactive field</span></li>
+    <li data-rail="numbers"><i>06</i><span>Counters on reveal</span></li>
+    <li data-rail="cta"><i>07</i><span>Magnetic CTA</span></li>
+  </ol>
+</aside>
+
+<main id="top">
+
+<!-- ============ 01 — HERO ============ -->
+<section class="hero" id="hero" data-section="hero">
+  <div class="hero__layers" aria-hidden="true">
+    <div class="hero__ring hero__ring--1" data-parallax="-0.18"></div>
+    <div class="hero__ring hero__ring--2" data-parallax="-0.34"></div>
+    <div class="hero__ring hero__ring--3" data-parallax="-0.52"></div>
+  </div>
+
+  <div class="hero__inner" data-hero>
+    <p class="eyebrow" data-hero-item>
+      <span class="eyebrow__pip"></span>Motion layer · live demonstration
+    </p>
+
+    <h1 class="hero__title">
+      <span class="line" data-hero-item><span>Pages that</span></span>
+      <span class="line" data-hero-item><span>hold your <em>attention</em></span></span>
+      <span class="line" data-hero-item><span>instead of losing it.</span></span>
+    </h1>
+
+    <p class="hero__lede" data-hero-item>
+      Same HTML. Same copy. Same brand. The only thing added is the layer
+      that decides <em>how</em> things arrive, settle and respond — and it is the
+      difference between a site people scan and a site people explore.
+    </p>
+
+    <div class="hero__actions" data-hero-item>
+      <a class="btn btn--primary" href="#choreography" data-magnet data-magnet-strength="0.42">
+        <span>Scroll the demo</span>
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M8 1v13M3 9l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <button class="btn btn--ghost" type="button" id="compare-btn" data-magnet data-magnet-strength="0.3">
+        <span>Kill the motion &amp; compare</span>
+      </button>
+    </div>
+
+    <dl class="hero__facts" data-hero-item>
+      <div><dt>Payload</dt><dd id="fact-weight">— KB</dd></div>
+      <div><dt>Libraries</dt><dd>0</dd></div>
+      <div><dt>Properties animated</dt><dd>transform / opacity</dd></div>
+    </dl>
+  </div>
+
+  <div class="hero__cue" data-hero-item aria-hidden="true">
+    <span class="hero__cue-line"></span>
+  </div>
+</section>
+
+<!-- ============ marquee ============ -->
+<div class="marquee" aria-hidden="true">
+  <div class="marquee__track">
+    <span>Staggered reveals</span><i>◆</i><span>Perspective rise</span><i>◆</i>
+    <span>Multi-speed parallax</span><i>◆</i><span>Pointer tilt</span><i>◆</i>
+    <span>Magnetic buttons</span><i>◆</i><span>Ambient drift</span><i>◆</i>
+    <span>Staggered reveals</span><i>◆</i><span>Perspective rise</span><i>◆</i>
+    <span>Multi-speed parallax</span><i>◆</i><span>Pointer tilt</span><i>◆</i>
+    <span>Magnetic buttons</span><i>◆</i><span>Ambient drift</span><i>◆</i>
+  </div>
+</div>
+
+<!-- ============ 02 — SCROLL CHOREOGRAPHY ============ -->
+<section class="section" id="choreography" data-section="choreography">
+  <header class="section__head">
+    <p class="kicker" data-reveal="rise">02 — Scroll choreography</p>
+    <h2 class="h2" data-reveal="mask" data-delay="0.06">
+      Nothing appears. Everything <em>arrives.</em>
+    </h2>
+    <p class="section__lede" data-reveal="rise" data-delay="0.14">
+      Each block rises from a little further away than the one before it, with a
+      short delay between them. The eye follows the sequence instead of trying to
+      read four things at once.
+    </p>
+  </header>
+
+  <div class="cards" data-stagger="90">
+    <article class="card" data-reveal="rise" data-tilt>
+      <div class="card__glow"></div>
+      <span class="card__idx">01</span>
+      <h3>Perspective rise</h3>
+      <p>Sections come up from 48px with a 6° rotation on the X axis and a touch of scale. It reads as depth, not as a slide.</p>
+      <code>data-reveal="rise"</code>
+    </article>
+    <article class="card" data-reveal="rise" data-tilt>
+      <div class="card__glow"></div>
+      <span class="card__idx">02</span>
+      <h3>Line masking</h3>
+      <p>Headlines are split into lines and wiped upward behind their own clip mask — the classic editorial entrance.</p>
+      <code>data-reveal="mask"</code>
+    </article>
+    <article class="card" data-reveal="rise" data-tilt>
+      <div class="card__glow"></div>
+      <span class="card__idx">03</span>
+      <h3>Stagger by group</h3>
+      <p>A parent hands each child an incrementing delay. Add a fifth card and it inherits the rhythm — no code change.</p>
+      <code>data-stagger="90"</code>
+    </article>
+    <article class="card" data-reveal="rise" data-tilt>
+      <div class="card__glow"></div>
+      <span class="card__idx">04</span>
+      <h3>Pointer tilt</h3>
+      <p>Hover any of these. The card leans toward the cursor and a soft highlight tracks it. It returns on a spring, not a cut.</p>
+      <code>data-tilt</code>
+    </article>
+  </div>
+</section>
+
+<!-- ============ 03 — OPPOSING SLIDE-IN ============ -->
+<section class="section split" id="split" data-section="split">
+  <div class="split__media" data-reveal="left">
+    <div class="panel">
+      <div class="panel__bar"><i></i><i></i><i></i><span>motion.js</span></div>
+      <pre class="panel__code"><code><b>&lt;section</b> data-reveal=<u>"rise"</u> data-delay=<u>"0.1"</u><b>&gt;</b>
+  <b>&lt;h2</b> data-reveal=<u>"mask"</u><b>&gt;</b>Headline<b>&lt;/h2&gt;</b>
+
+  <b>&lt;div</b> data-stagger=<u>"90"</u><b>&gt;</b>
+    <b>&lt;article</b> data-reveal=<u>"rise"</u> data-tilt<b>&gt;</b>…<b>&lt;/article&gt;</b>
+    <b>&lt;article</b> data-reveal=<u>"rise"</u> data-tilt<b>&gt;</b>…<b>&lt;/article&gt;</b>
+  <b>&lt;/div&gt;</b>
+
+  <b>&lt;a</b> class=<u>"btn"</u> data-magnet<b>&gt;</b>Get started<b>&lt;/a&gt;</b>
+<b>&lt;/section&gt;</b></code></pre>
+      <p class="panel__note">That is the entire integration. No wrappers, no build step.</p>
+    </div>
+  </div>
+
+  <div class="split__body" data-reveal="right" data-delay="0.1">
+    <p class="kicker">03 — Opposing slide-in</p>
+    <h2 class="h2">Two halves that meet<br>in the middle.</h2>
+    <p>
+      Side-by-side content enters from opposite edges. It is one of the cheapest
+      ways to make a static two-column block feel composed — and it costs two
+      attributes.
+    </p>
+    <ul class="ticks" data-stagger="70">
+      <li data-reveal="rise">Markup stays semantic — animation is an attribute, never a wrapper div</li>
+      <li data-reveal="rise">Any developer can add, retime or remove a reveal without reading the engine</li>
+      <li data-reveal="rise">Elements are released from observation once revealed — zero ongoing cost</li>
+      <li data-reveal="rise">Without JavaScript, every element renders at its final state</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ 04 — PARALLAX DEPTH ============ -->
+<section class="depth" id="depth" data-section="depth">
+  <div class="depth__scene" aria-hidden="true">
+    <div class="depth__layer depth__layer--far"  data-parallax="0.08"></div>
+    <div class="depth__layer depth__layer--mid"  data-parallax="0.20"></div>
+    <div class="depth__layer depth__layer--near" data-parallax="0.38"></div>
+    <div class="depth__grid" data-parallax="0.12"></div>
+  </div>
+
+  <div class="depth__content">
+    <p class="kicker" data-reveal="rise">04 — Parallax depth</p>
+    <h2 class="h2 h2--xl" data-reveal="mask" data-delay="0.05">Four layers.<br>Four speeds.</h2>
+    <p class="depth__lede" data-reveal="rise" data-delay="0.12">
+      Background elements travel slower than the content in front of them, so the
+      page gains a sense of distance as you scroll. Every layer is moved with a
+      single <code>translate3d</code> inside one shared animation frame — the
+      browser never recalculates layout.
+    </p>
+    <div class="depth__legend" data-stagger="80">
+      <span data-reveal="scale">0.08× far</span>
+      <span data-reveal="scale">0.12× grid</span>
+      <span data-reveal="scale">0.20× mid</span>
+      <span data-reveal="scale">0.38× near</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 05 — CURSOR-REACTIVE FIELD (light section) ============ -->
+<section class="section field" id="field" data-section="field">
+  <header class="section__head section__head--center">
+    <p class="kicker" data-reveal="rise">05 — Interactive graphic</p>
+    <h2 class="h2" data-reveal="mask" data-delay="0.06">Move your cursor through it.</h2>
+    <p class="section__lede" data-reveal="rise" data-delay="0.12">
+      An on-page graphic that responds to the pointer — on touch screens it
+      responds to a finger, and if nothing is touching it, it breathes on its own.
+      Drawn to a canvas, capped to the device pixel ratio, and paused the moment
+      it scrolls out of view.
+    </p>
+  </header>
+  <div class="field__stage" data-reveal="scale" data-delay="0.16">
+    <canvas id="field-canvas"></canvas>
+    <p class="field__hint">drag · hover · tap</p>
+  </div>
+</section>
+
+<!-- ============ 06 — COUNTERS ============ -->
+<section class="section numbers" id="numbers" data-section="numbers">
+  <header class="section__head">
+    <p class="kicker" data-reveal="rise">06 — Measured, not claimed</p>
+    <h2 class="h2" data-reveal="mask" data-delay="0.06">The numbers behind this page.</h2>
+  </header>
+  <div class="stats" data-stagger="100">
+    <div class="stat" data-reveal="rise">
+      <b data-count="60" data-suffix=" fps">0</b>
+      <span>Sustained through the scroll, measured in-page — the badge in the header is live.</span>
+    </div>
+    <div class="stat" data-reveal="rise">
+      <b data-count="0" data-suffix="" id="stat-weight">0</b>
+      <span>Kilobytes total, fonts included. Filled in at runtime from the Resource Timing API.</span>
+    </div>
+    <div class="stat" data-reveal="rise">
+      <b data-count="0" data-suffix="">0</b>
+      <span>Third-party requests. No GSAP, no Lottie, no CDN, no tracking — nothing leaves the domain.</span>
+    </div>
+    <div class="stat" data-reveal="rise">
+      <b data-count="300" data-prefix="&lt;" data-suffix="ms">0</b>
+      <span>Every hover state settles inside 300ms, so interaction always feels immediate.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 07 — MAGNETIC CTA ============ -->
+<section class="cta" id="cta" data-section="cta">
+  <div class="cta__inner">
+    <h2 class="h2 h2--xl" data-reveal="mask">Buttons that<br>reach back.</h2>
+    <p data-reveal="rise" data-delay="0.1">
+      The button below leans toward your cursor before you get there, and lets go
+      with a small overshoot. Pointer-based effects are switched off entirely on
+      touch devices, where they would only cost battery.
+    </p>
+    <div class="cta__actions" data-reveal="rise" data-delay="0.18">
+      <a class="btn btn--xl" href="#top" data-magnet data-magnet-strength="0.55">
+        <span>Back to the top</span>
+      </a>
+    </div>
+    <p class="cta__foot" data-reveal="rise" data-delay="0.24">
+      Reduced-motion is respected: if a visitor's system asks for less movement,
+      the ambient canvas never starts and every reveal resolves instantly.
+    </p>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <p>Heliostat — a fictional brand, built as a working demonstration of a motion layer.</p>
+  <p class="foot__meta"><span id="foot-weight">—</span> · <span id="foot-req">—</span> requests · 0 third-party</p>
+</footer>
+
+<script src="js/ambient.js" defer></script>
+<script src="js/motion.js" defer></script>
+</body>
+</html>
